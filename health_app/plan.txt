@@ -1,0 +1,366 @@
+================================================================================
+FLUTTER SENTIMENT ANALYSIS APP - PROJECT PLAN
+================================================================================
+
+Project: On-Device BERT Sentiment Analysis using TensorFlow Lite
+Status: Phases 1-2 Complete | Phases 3-5 Remaining
+Last Updated: November 2024
+
+================================================================================
+DEPENDENCIES & VERSIONS
+================================================================================
+
+✓ tflite_flutter: ^0.12.1 (Latest stable - verified compatible)
+✗ tflite_flutter_helper: DISCONTINUED (Not needed - functionality in tflite_flutter)
+
+Flutter SDK: ^3.9.2
+Dart SDK: ^3.9.2
+
+================================================================================
+MODEL SPECIFICATIONS
+================================================================================
+
+Model File: assets/models/student_int8.tflite (14.4 MB)
+Label Map: assets/models/label_map.json
+Vocabulary: assets/tokenizer/vocab.txt
+
+Input Shape: [1, 128] for both input_ids and attention_mask (int32)
+Output: 3-class logits (int8 → convert to float)
+Labels: ["negative", "neutral", "positive"]
+
+Target Latency: <100ms on typical devices
+Expected Performance:
+  - 20-60ms on mid/high-end devices
+  - 80-120ms on low-end phones
+
+================================================================================
+PHASE 1: PROJECT SETUP & ASSET CONFIGURATION
+================================================================================
+STATUS: ✅ COMPLETE
+
+Tasks Completed:
+  ✅ 1. Initialize Flutter project structure
+      - Created Flutter project with name: sentiment_analysis
+      - Organization: com.doxab
+      - All platform folders generated (android, ios, web, macos, windows, linux)
+
+  ✅ 2. Create asset folder structure
+      - Created assets/models/ directory
+      - Created assets/tokenizer/ directory
+
+  ✅ 3. Organize model files
+      - Moved student_int8.tflite → assets/models/
+      - Moved label_map.json → assets/models/
+      - Moved vocab.txt → assets/tokenizer/
+
+  ✅ 4. Update pubspec.yaml
+      - Added dependency: tflite_flutter: ^0.12.1
+      - Registered all assets under flutter: assets:
+      - Ran flutter pub get successfully
+
+  ✅ 5. Verify asset loading
+      - Created verifyAssets() function in lib/main.dart
+      - All assets verified to load correctly
+      - No errors or missing files
+
+Deliverable: ✅ Flutter project with assets configured and dependencies installed
+
+================================================================================
+PHASE 2: CORE ML SERVICE LAYER
+================================================================================
+STATUS: ✅ COMPLETE
+
+Tasks Completed:
+  ✅ 1. Create lib/services/model_service.dart
+      - Load TFLite interpreter from assets
+      - Load label_map.json and parse labels array
+      - Load vocab.txt and build token-to-ID map (Map<String, int>)
+      - Initialize interpreter with 4 threads
+      - Handle initialization errors gracefully
+      - Make service singleton or use dependency injection
+
+  ✅ 2. Create lib/services/tokenizer_service.dart
+      - Implement WordPiece tokenizer (BERT-style)
+      - Convert text to lowercase
+      - Split by spaces
+      - Look up token IDs in vocab map
+      - Handle unknown tokens with [UNK] token ID
+      - Handle special tokens: [CLS], [SEP], [PAD], [UNK]
+      - Pad/truncate token sequence to length 128
+      - Build attention mask (1 for real tokens, 0 for padding)
+      - Return both input_ids and attention_mask as List<int>
+
+  ✅ 3. Create lib/services/sentiment_service.dart
+      - Combine tokenizer + model inference
+      - Accept input text string
+      - Convert text → token IDs → model input format
+      - Prepare input tensors: [input_ids, attention_mask] both shape [1, 128]
+      - Run interpreter with proper input/output shapes
+      - Convert int8 logits to float32
+      - Apply softmax or find max index
+      - Map output index to sentiment label
+      - Return sentiment result (label, confidence, etc.)
+      - Add comprehensive error handling
+
+Deliverable: ✅ Working ML pipeline that can process text and return sentiment
+
+Files Created:
+  - lib/services/model_service.dart ✅
+  - lib/services/tokenizer_service.dart ✅
+  - lib/services/sentiment_service.dart ✅
+
+Key Implementation Notes:
+  - Model expects inputs as List<List<int>> with shape [1, 128]
+  - Output is int8 array, need to convert to float
+  - Use vocab['[UNK]'] for unknown tokens
+  - Always pad/truncate to exactly 128 tokens
+
+================================================================================
+PHASE 3: INFERENCE ENGINE & DATA MODELS
+================================================================================
+STATUS: ⏳ PENDING
+
+Tasks Remaining:
+  ⏳ 1. Create lib/models/sentiment_result.dart
+      - Data class/model for sentiment result
+      - Fields: label (String), confidence (double), latency (int milliseconds)
+      - Optional: raw logits array for debugging
+      - Add toString() method for debugging
+
+  ⏳ 2. Enhance sentiment_service.dart
+      - Integrate Stopwatch for latency measurement
+      - Return structured SentimentResult object instead of raw values
+      - Measure time from tokenization start to result return
+      - Include latency in result object
+
+  ⏳ 3. Create lib/utils/input_preprocessor.dart
+      - Text normalization utilities
+      - Input validation (empty text, null checks)
+      - Text cleaning functions if needed
+      - Length validation helpers
+
+  ⏳ 4. Add logging and debugging
+      - Add debug logging for inference steps
+      - Log tokenization results (token count, etc.)
+      - Log inference time
+      - Handle edge cases gracefully
+
+Deliverable: ⏳ Production-ready inference service with performance metrics
+
+Files to Create:
+  - lib/models/sentiment_result.dart
+  - lib/utils/input_preprocessor.dart
+
+Files to Modify:
+  - lib/services/sentiment_service.dart (enhance with latency tracking)
+
+================================================================================
+PHASE 4: USER INTERFACE IMPLEMENTATION
+================================================================================
+STATUS: ⏳ PENDING
+
+Tasks Remaining:
+  ⏳ 1. Create lib/screens/home_screen.dart
+      - Text input field (TextField or TextFormField)
+      - "Analyze" button (ElevatedButton)
+      - Loading state indicator (CircularProgressIndicator)
+      - Results display area showing:
+        * Sentiment label (negative/neutral/positive)
+        * Emoji indicator (😞 for negative, 😐 for neutral, 😊 for positive)
+        * Confidence score (optional, as percentage)
+        * Inference latency in milliseconds
+      - Error message display area
+      - Clean, modern UI design
+
+  ⏳ 2. Update lib/main.dart
+      - Initialize model service on app startup (in main() or initState)
+      - Load model asynchronously before showing UI
+      - Show loading screen while model initializes
+      - Set up MaterialApp with HomeScreen as home
+      - Handle app lifecycle (ensure model loads only once)
+      - Remove or update verifyAssets() to use actual model service
+
+  ⏳ 3. Add UI styling
+      - Color coding for sentiment:
+        * Red theme for negative
+        * Yellow/Gray theme for neutral
+        * Green theme for positive
+      - Responsive layout (works on different screen sizes)
+      - Material Design 3 components
+      - Smooth animations for state transitions
+
+  ⏳ 4. Error handling UI
+      - Show error messages if model fails to load
+      - Display user-friendly error messages for inference failures
+      - Retry button for failed operations
+      - Graceful degradation
+
+Deliverable: ⏳ Functional UI for sentiment analysis with good UX
+
+Files to Create:
+  - lib/screens/home_screen.dart
+
+Files to Modify:
+  - lib/main.dart (update initialization and routing)
+
+UI Components Needed:
+  - Text input widget
+  - Button widget
+  - Result display card/widget
+  - Loading indicator
+  - Error message widget
+
+================================================================================
+PHASE 5: TESTING, BENCHMARKING & POLISH
+================================================================================
+STATUS: ⏳ PENDING
+
+Tasks Remaining:
+  ⏳ 1. Create lib/screens/benchmark_screen.dart (Optional but recommended)
+      - Navigation from home screen to benchmark screen
+      - Run 50 inferences with sample texts
+      - Calculate statistics:
+        * Mean latency
+        * Median (p50) latency
+        * p90 latency
+        * p99 latency
+        * Min/Max latency
+      - Display results in a table or list
+      - Export results to CSV file functionality
+      - Save CSV to device storage or share
+      - Progress indicator during benchmark runs
+
+  ⏳ 2. Add unit tests
+      - Test tokenizer with various inputs:
+        * Normal text
+        * Empty text
+        * Very long text
+        * Special characters
+        * Unknown tokens
+      - Test model loading
+      - Test inference pipeline end-to-end
+      - Test error handling
+
+  ⏳ 3. Performance optimization
+      - Verify model loads only once (singleton pattern)
+      - Optimize tokenization performance
+      - Test on different device types if possible
+      - Profile memory usage
+      - Ensure no memory leaks
+
+  ⏳ 4. Final polish
+      - Add app icon (update android/ios assets)
+      - Improve UI/UX:
+        * Add animations and transitions
+        * Improve color scheme
+        * Better typography
+        * Add haptic feedback (optional)
+      - Add input validation feedback
+      - Test edge cases:
+        * Empty input
+        * Very long input
+        * Special characters
+        * Unicode characters
+      - Document code with comments
+      - Add code documentation
+
+  ⏳ 5. Create README.md
+      - Project description
+      - Setup instructions
+      - Project structure overview
+      - How to run the app
+      - Performance expectations
+      - Known issues/limitations
+      - Future improvements
+
+Deliverable: ⏳ Complete, tested, and documented Flutter app
+
+Files to Create:
+  - lib/screens/benchmark_screen.dart (optional)
+  - test/services/tokenizer_service_test.dart
+  - test/services/sentiment_service_test.dart
+  - README.md
+
+Files to Modify:
+  - Update app icons in android/ios folders
+  - Add navigation between screens
+
+================================================================================
+PROJECT STRUCTURE (Current)
+================================================================================
+
+Doxab/
+├── assets/
+│   ├── models/
+│   │   ├── student_int8.tflite ✅
+│   │   └── label_map.json ✅
+│   └── tokenizer/
+│       └── vocab.txt ✅
+├── lib/
+│   ├── main.dart ✅ (with asset verification)
+│   ├── services/ ✅ (Phase 2 complete)
+│   │   ├── model_service.dart ✅
+│   │   ├── tokenizer_service.dart ✅
+│   │   └── sentiment_service.dart ✅
+│   ├── models/ ⏳ (to be created in Phase 3)
+│   ├── screens/ ⏳ (to be created in Phase 4)
+│   └── utils/ ⏳ (to be created in Phase 3)
+├── test/ ✅ (Flutter default test structure)
+├── pubspec.yaml ✅ (dependencies configured)
+└── plan.txt ✅ (this file)
+
+================================================================================
+IMPLEMENTATION NOTES & KEY REQUIREMENTS
+================================================================================
+
+1. Model Input Format:
+   - input_ids: List<List<int>> with shape [1, 128], type int32
+   - attention_mask: List<List<int>> with shape [1, 128], type int32
+   - Both must be exactly length 128
+
+2. Model Output:
+   - Returns int8 array, convert to float32
+   - Shape: [1, 3] (3 classes: negative, neutral, positive)
+   - Find index of maximum value to get predicted class
+
+3. Tokenization:
+   - Use WordPiece tokenization (BERT-style)
+   - Special tokens: [CLS] at start, [SEP] at end, [PAD] for padding
+   - Unknown tokens use [UNK] token ID from vocab
+
+4. Code Style:
+   - Follow Flutter/Dart best practices
+   - Use beginner-friendly code (no lambdas, find, etc. per user preference)
+   - Add comments for clarity
+   - Handle errors gracefully
+
+5. Performance:
+   - Model should load once at app startup
+   - Cache vocab and labels in memory
+   - Optimize tokenization for speed
+   - Target <100ms inference time
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+Current Status: Phases 1-2 Complete ✅
+Next Phase: Phase 3 - Inference Engine & Data Models ⏳
+
+To start Phase 3:
+1. Create lib/models/sentiment_result.dart (data model for results)
+2. Enhance sentiment_service.dart with latency tracking
+3. Create lib/utils/input_preprocessor.dart (text normalization)
+4. Add logging and debugging capabilities
+
+Estimated Time Remaining:
+- Phase 2: ✅ Complete
+- Phase 3: 2-3 hours
+- Phase 4: 3-4 hours
+- Phase 5: 3-5 hours
+Total: 8-12 hours remaining
+
+================================================================================
+END OF PLAN
+================================================================================
+
